@@ -27,6 +27,8 @@ db.connect((err) => {
   console.log("✅ Connected to MySQL database.");
 });
 
+// Create the 'user' table if it does not already exist.
+// This table will store detailed information about user.
 db.query(
   `
   CREATE TABLE IF NOT EXISTS users (
@@ -36,6 +38,7 @@ db.query(
     password VARCHAR(255) NOT NULL,
     cp_number VARCHAR(15) UNIQUE NOT NULL,
     role VARCHAR(50) NOT NULL,
+    status ENUM('active', 'inactive') DEFAULT 'inactive',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_logout TIMESTAMP NULL DEFAULT NULL
   )
@@ -49,18 +52,100 @@ db.query(
   }
 );
 
+// Municipal Officials Table
+db.query(
+  `
+  CREATE TABLE IF NOT EXISTS municipal_officials (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    position VARCHAR(255) NOT NULL,
+    type ENUM('head', 'vice', 'officer') NOT NULL,
+    image VARCHAR(255), -- stores file name or URL
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+  `,
+  (err) => {
+    if (err) {
+      console.error("❌ Failed to create municipal_officials table:", err);
+    } else {
+      console.log("✅ municipal_officials table ready.");
+    }
+  }
+);
+
+// Barangay Officials Table
+db.query(
+  `
+  CREATE TABLE IF NOT EXISTS barangay_officials (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    barangay_name VARCHAR(255) NOT NULL,
+    president_name VARCHAR(255) NOT NULL,
+    position VARCHAR(100) DEFAULT 'President',
+    image VARCHAR(255), -- stores file name or URL
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+  `,
+  (err) => {
+    if (err) {
+      console.error("❌ Failed to create barangay_officials table:", err);
+    } else {
+      console.log("✅ barangay_officials table ready.");
+    }
+  }
+);
+
+db.query(
+  `CREATE TABLE IF NOT EXISTS sms_templates (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    category VARCHAR(100) NOT NULL,
+    message TEXT NOT NULL,                   
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- When the template was added
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  )`,
+  (err) => {
+    if (err) {
+      console.error("❌ Failed to create sms_templates table:", err);
+    } else {
+      console.log("✅ sms_templates table ready.");
+    }
+  }
+);
+
+// Create the 'user' table if it does not already exist.
+// This table will store detailed information about user.
+db.query(
+  `
+  CREATE TABLE IF NOT EXISTS sms_credentials (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  email VARCHAR(255) NOT NULL,
+  password VARCHAR(255) NOT NULL,
+  api_code VARCHAR(255) NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+  `,
+  (err) => {
+    if (err) {
+      console.error("❌ Failed to create sms credentials table:", err);
+    } else {
+      console.log("✅ sms credentials table ready.");
+    }
+  }
+);
+
 // Create the 'otp_codes' table if it does not already exist.
 // This prevents errors if the script is run multiple times.
 db.query(
   `
   CREATE TABLE IF NOT EXISTS otp_codes (
-    id INT AUTO_INCREMENT PRIMARY KEY,  -- Unique identifier, auto-increments
-    mobile VARCHAR(15) NOT NULL,        -- Mobile number, cannot be null
-    otp VARCHAR(6) NOT NULL,            -- One-Time Password, cannot be null
-    purpose VARCHAR(50),                -- Purpose of the OTP (e.g., 'registration', 'password_reset')
-    expires_at DATETIME,                -- Timestamp when the OTP expires
-    used BOOLEAN DEFAULT 0,             -- Flag to check if the OTP has been used (0 for false, 1 for true)
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Timestamp when the record was created
+    id INT AUTO_INCREMENT PRIMARY KEY,  
+    mobile VARCHAR(15) NOT NULL,        
+    otp VARCHAR(6) NOT NULL,            
+    purpose VARCHAR(50),                
+    expires_at DATETIME,                
+    used BOOLEAN DEFAULT 0,            
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP 
   )
 `,
   (err) => {
@@ -78,13 +163,13 @@ db.query(
 // This ensures idempotency, meaning running the script multiple times has the same effect.
 db.query(
   `CREATE TABLE IF NOT EXISTS sms_logs (
-    id INT AUTO_INCREMENT PRIMARY KEY,    -- Unique identifier, auto-increments
-    recipients TEXT NOT NULL,             -- Comma-separated list of recipients or JSON string, cannot be null
-    message TEXT NOT NULL,                -- The SMS message content, cannot be null
-    status VARCHAR(20) NOT NULL,          -- Status of the SMS (e.g., 'SENT', 'FAILED', 'DELIVERED'), cannot be null
-    reference_id VARCHAR(100),            -- External reference ID for the SMS (e.g., from an SMS gateway)
-    credit_used DECIMAL(10,2) DEFAULT 0,  -- Amount of credit used for the SMS, defaults to 0.00
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Timestamp when the record was created
+    id INT AUTO_INCREMENT PRIMARY KEY,    
+    recipients TEXT NOT NULL,             
+    message TEXT NOT NULL,                
+    status VARCHAR(20) NOT NULL,          
+    reference_id VARCHAR(100),            
+    credit_used DECIMAL(10,2) DEFAULT 0,  
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP 
   )`,
   (err) => {
     if (err) {
@@ -93,6 +178,28 @@ db.query(
     } else {
       // Log a success message if the table is created or already exists.
       console.log("✅ sms_logs table ready.");
+    }
+  }
+);
+
+// Create the 'audit_logs' table if it does not already exist.
+// This table will store detailed information about audit logs.
+db.query(
+  `
+  CREATE TABLE IF NOT EXISTS audit_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    user VARCHAR(255) NOT NULL,
+    userRole VARCHAR(50) NOT NULL,
+    action VARCHAR(50) NOT NULL,
+    details TEXT
+  )
+  `,
+  (err) => {
+    if (err) {
+      console.error("❌ Failed to create audit_logs table:", err);
+    } else {
+      console.log("✅ audit_logs table ready.");
     }
   }
 );

@@ -1,23 +1,5 @@
 const Connection = require("../db/Connection");
 
-/**
- * Senior Citizen Service Layer
- * Provides methods for interacting with the senior_citizens table.
- */
-
-// Fetch all senior citizens
-exports.getAllSeniorCitizens = async () => {
-  try {
-    const results = await Connection(
-      "SELECT * FROM senior_citizens ORDER BY date_registered DESC"
-    );
-    return results;
-  } catch (error) {
-    console.error("Error fetching all senior citizens:", error);
-    throw new Error("Failed to retrieve all senior citizens.");
-  }
-};
-
 // Fetch senior citizen by ID
 exports.getSeniorCitizenById = async (id) => {
   try {
@@ -68,61 +50,27 @@ exports.deleteSeniorCitizen = async (id) => {
   }
 };
 
-// Search senior citizens by name, address, or number
-exports.searchSeniorCitizens = async (searchTerm) => {
-  try {
-    const searchPattern = `%${searchTerm}%`;
-    const query = `
-      SELECT * FROM senior_citizens
-      WHERE
-        first_name LIKE ? OR
-        last_name LIKE ? OR
-        middle_name LIKE ? OR
-        address LIKE ? OR
-        cp_number LIKE ?
-      ORDER BY last_name ASC, first_name ASC
-    `;
-    const results = await Connection(query, [
-      searchPattern,
-      searchPattern,
-      searchPattern,
-      searchPattern,
-      searchPattern,
-    ]);
-    return results;
-  } catch (error) {
-    console.error(
-      `Error searching senior citizens with term "${searchTerm}":`,
-      error
-    );
-    throw new Error("Failed to search senior citizens.");
-  }
-};
-
 // Paginated retrieval
 exports.getPaginatedSeniorCitizens = async (page, limit) => {
+  const offset = (page - 1) * limit;
   try {
-    const offset = (page - 1) * limit;
-    const [countResult] = await Connection(
-      `SELECT COUNT(*) as total FROM senior_citizens`
+    // Get paginated citizens
+    const citizens = await Connection(
+      `SELECT * FROM senior_citizens ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [limit, offset]
     );
-    const total = countResult.total;
 
-    const query = `
-      SELECT * FROM senior_citizens
-      ORDER BY date_registered DESC
-      LIMIT ? OFFSET ?
-    `;
-    const results = await Connection(query, [limit, offset]);
+    // Get total count of citizens
+    const totalRows = await Connection(
+      `SELECT COUNT(*) AS total FROM senior_citizens`
+    );
+    const total = totalRows[0].total;
 
     return {
-      total,
-      page,
-      limit,
-      seniorCitizens: results,
+      citizens, // the paginated data
+      total, // total count
       totalPages: Math.ceil(total / limit),
-      hasNextPage: page * limit < total,
-      hasPrevPage: page > 1,
+      page,
     };
   } catch (error) {
     console.error(
@@ -133,28 +81,20 @@ exports.getPaginatedSeniorCitizens = async (page, limit) => {
   }
 };
 
-// Filter by barangay
-exports.getSeniorCitizensByBarangay = async (barangay) => {
+exports.getSmsRecipients = async (req, res) => {
   try {
-    const query = `
-      SELECT * FROM senior_citizens
-      WHERE barangay = ?
-      ORDER BY last_name ASC, first_name ASC
-    `;
-    const results = await Connection(query, [barangay]);
-    return results;
+    const result = await Connection(`
+      SELECT 
+        id,
+        CONCAT_WS(' ', firstName, middleName, lastName, suffix) AS name,
+        COALESCE(mobileNumber, emergencyContactNumber) AS contact,
+        barangay
+      FROM senior_citizens
+      WHERE mobileNumber IS NOT NULL OR emergencyContactNumber IS NOT NULL
+    `);
+    res.json(result);
   } catch (error) {
-    console.error(
-      `Error fetching senior citizens by barangay "${barangay}":`,
-      error
-    );
-    throw new Error(
-      `Failed to retrieve senior citizens for barangay ${barangay}.`
-    );
+    console.error("Error fetching SMS recipients:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
-
-// Additional service functions can be added below as needed.
-// For example:
-// exports.getTotalCount = async () => { ... };
-// exports.getByHealthStatus = async (status) => { ... };
