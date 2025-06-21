@@ -9,7 +9,7 @@ require("dotenv").config(); // Load environment variables
 
 // Initialize the Express application
 const app = express();
-const PORT = process.env.BACKEND_URL || 3000;
+const PORT = process.env.PORT;
 
 // Trust proxy
 app.set("trust proxy", 1);
@@ -22,7 +22,7 @@ app.use(express.urlencoded({ extended: true }));
 // CORS configuration
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: process.env.FRONTEND_URL,
     credentials: true,
   })
 );
@@ -31,7 +31,7 @@ app.use(
 app.options(
   "*",
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: process.env.FRONTEND_URL,
     credentials: true,
   })
 );
@@ -93,6 +93,17 @@ app.use("/api/templates", templateRoutes);
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: "Something went wrong on the server!" });
+});
+
+app.use((req, res, next) => {
+  res.on("finish", () => {
+    console.log(`[${req.method}] ${req.originalUrl}`);
+    console.log(
+      "Access-Control-Allow-Origin:",
+      res.getHeader("Access-Control-Allow-Origin")
+    );
+  });
+  next();
 });
 
 // Session test route
