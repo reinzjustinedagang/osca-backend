@@ -1,15 +1,15 @@
 // Import necessary modules
+require("dotenv").config(); // Load environment variables
 const express = require("express");
 const cors = require("cors");
 const compression = require("compression");
 const session = require("express-session");
 const MySQLStore = require("express-mysql-session")(session);
 const Connection = require("../db/Connection"); // Import your DB utility
-require("dotenv").config(); // Load environment variables
 
 // Initialize the Express application
 const app = express();
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 8080;
 
 // Trust proxy
 app.set("trust proxy", 1);
