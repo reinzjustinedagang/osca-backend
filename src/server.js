@@ -36,6 +36,17 @@ app.options(
   })
 );
 
+app.use((req, res, next) => {
+  res.on("finish", () => {
+    console.log(`[${req.method}] ${req.originalUrl}`);
+    console.log(
+      "Access-Control-Allow-Origin:",
+      res.getHeader("Access-Control-Allow-Origin")
+    );
+  });
+  next();
+});
+
 // MySQL session store setup
 const sessionStore = new MySQLStore({
   host: process.env.DB_HOST,
@@ -58,9 +69,9 @@ app.use(
     store: sessionStore,
     cookie: {
       httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      maxAge: 1000 * 60 * 60 * 24, // 1 day
+      secure: process.env.NODE_ENV === "production", // Only true in production with HTTPS
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 1000 * 60 * 60 * 24,
     },
   })
 );
@@ -81,7 +92,7 @@ if (!fs.existsSync(uploadsDir)) {
   console.log("✅ Created uploads directory");
 }
 
-app.use("/uploads", express.static("uploads")); // serve uploaded images
+app.use("/uploads", express.static(uploadsDir)); // serve uploaded images
 app.use("/api/officials", officialRoutes);
 app.use("/api/audit-logs", auditRoutes);
 app.use("/api/user", authRoutes);
@@ -95,17 +106,6 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: "Something went wrong on the server!" });
 });
 
-app.use((req, res, next) => {
-  res.on("finish", () => {
-    console.log(`[${req.method}] ${req.originalUrl}`);
-    console.log(
-      "Access-Control-Allow-Origin:",
-      res.getHeader("Access-Control-Allow-Origin")
-    );
-  });
-  next();
-});
-
 // Session test route
 app.get("/api/test-session", (req, res) => {
   req.session.views = (req.session.views || 0) + 1;
@@ -116,6 +116,11 @@ app.get("/api/test-session", (req, res) => {
 const deactivateExpiredUsers = async () => {
   try {
     const expiredSessions = await sessionStore.all();
+    if (!expiredSessions || typeof expiredSessions !== "object") {
+      console.warn("No sessions found or invalid sessions data");
+      return;
+    }
+
     const now = Date.now();
     const expiredUserIds = [];
 
@@ -145,6 +150,13 @@ const deactivateExpiredUsers = async () => {
 
 // Run check every 5 minutes
 setInterval(deactivateExpiredUsers, 300000); // 5 minutes
+
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+});
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+});
 
 // Start the server
 app.listen(PORT, "0.0.0.0", () => {

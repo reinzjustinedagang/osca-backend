@@ -21,7 +21,17 @@ router.get("/municipal", async (req, res) => {
 router.post(
   "/municipal",
   isAuthenticated,
-  upload.single("image"),
+  (req, res, next) => {
+    upload.single("image")(req, res, (err) => {
+      if (err) {
+        // Multer error (file size, invalid type, etc.)
+        console.error("Multer error:", err);
+        return res.status(400).json({ message: err.message });
+      }
+      // No error, continue to next middleware
+      next();
+    });
+  },
   async (req, res) => {
     const { name, position, type } = req.body;
     const image = req.file ? req.file.filename : null;
