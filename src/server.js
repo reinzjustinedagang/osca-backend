@@ -158,6 +158,8 @@ process.on("unhandledRejection", (reason, promise) => {
   console.error("Unhandled Rejection at:", promise, "reason:", reason);
 });
 
+app.get("/", (req, res) => res.send("Hello from server!"));
+
 // Start the server
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server is running on ${PORT}`);
