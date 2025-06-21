@@ -11,6 +11,9 @@ require("dotenv").config(); // Load environment variables
 const app = express();
 const PORT = process.env.BACKEND_URL || 3000;
 
+// Trust proxy
+app.set("trust proxy", 1);
+
 // Middleware setup
 app.use(compression());
 app.use(express.json());
@@ -18,6 +21,15 @@ app.use(express.urlencoded({ extended: true }));
 
 // CORS configuration
 app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    credentials: true,
+  })
+);
+
+// Handle preflight requests
+app.options(
+  "*",
   cors({
     origin: process.env.FRONTEND_URL || "http://localhost:5173",
     credentials: true,
@@ -88,9 +100,6 @@ app.get("/api/test-session", (req, res) => {
   req.session.views = (req.session.views || 0) + 1;
   res.send(`Session views: ${req.session.views}`);
 });
-
-// Trust proxy
-app.set("trust proxy", 1);
 
 // 🔁 Auto deactivate users with expired sessions
 const deactivateExpiredUsers = async () => {
