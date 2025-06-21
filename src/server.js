@@ -9,7 +9,7 @@ require("dotenv").config(); // Load environment variables
 
 // Initialize the Express application
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.BACKEND_URL || 3000;
 
 // Middleware setup
 app.use(compression());
@@ -28,7 +28,7 @@ app.use(
 const sessionStore = new MySQLStore({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
-  password: "", // Use process.env.DB_PASSWORD ideally
+  password: process.env.DB_PASSWORD,
   port: process.env.DB_PORT,
   database: process.env.DB_DATABASE,
   clearExpired: true,
@@ -46,8 +46,8 @@ app.use(
     store: sessionStore,
     cookie: {
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
+      secure: true,
+      sameSite: "none",
       maxAge: 1000 * 60 * 60 * 24, // 1 day
     },
   })
@@ -62,13 +62,13 @@ const templateRoutes = require("../route/templateRoutes");
 const officialRoutes = require("../route/officialRoutes");
 const fs = require("fs");
 const path = require("path");
-
 const uploadsDir = path.join(__dirname, "uploads");
 
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir);
   console.log("✅ Created uploads directory");
 }
+
 app.use("/uploads", express.static("uploads")); // serve uploaded images
 app.use("/api/officials", officialRoutes);
 app.use("/api/audit-logs", auditRoutes);
@@ -127,6 +127,6 @@ const deactivateExpiredUsers = async () => {
 setInterval(deactivateExpiredUsers, 300000); // 5 minutes
 
 // Start the server
-app.listen(PORT, () => {
-  console.log(`🚀 Server listening on http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server is running on ${PORT}`);
 });
